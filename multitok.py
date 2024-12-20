@@ -73,18 +73,20 @@ def extract_metadata(url):
 def downloader(file_name, link, response, extension):
     file_size = int(response.headers.get("content-length", 0))
     username, _ , content_type = extract_video_id(link)
+    username = username[1:]
 
     if args.no_folders:
         folder_name = args.output_dir
         file_name = f"{username}_{file_name}"
     else:
         folder_name = os.path.join(args.output_dir, username)
-        if not os.path.exists(folder_name):
-            os.makedirs(folder_name)
-            print(f"Folder created: {folder_name}\n")
+
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+        print(f"Folder created: {folder_name}\n")
 
     file_path = os.path.join(folder_name, f"{file_name}.{extension}")
-    
+
     if os.path.exists(file_path) and args.skip_existing:
         print(f"\033[93mSkipping\033[0m: {file_name}.{extension} (already exists)")
         return
@@ -159,7 +161,7 @@ def download_v3(link):
                 downloader(file_name, link, response, extension="mp4")
             else:
                 download_links = selector.xpath('//div[@class="media-box"]/img/@src').getall()
-                
+
                 for index, download_link in enumerate(download_links):
                     response = s.get(download_link, stream=True, headers=headers)
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
@@ -213,7 +215,7 @@ def download_v2(link):
                 downloader(file_name, link, response, extension="mp4")
             else:
                 download_links = selector.xpath('//div[@class="card-image"]/img/@src').getall()
-                
+
                 for index, download_link in enumerate(download_links):
                     response = s.get(download_link, stream=True, headers=headers)
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
@@ -245,7 +247,7 @@ def download_v1(link):
             data = {'url': link, 'token': token}
 
             response = s.post('https://tmate.cc/action', headers=headers, data=data).json()["data"]
-            
+
             selector = Selector(text=response)
 
             if content_type == "video":
