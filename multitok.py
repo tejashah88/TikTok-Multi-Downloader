@@ -1,4 +1,6 @@
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 from parsel import Selector
 import argparse
 import os
@@ -68,6 +70,18 @@ def extract_metadata(url):
     return parsed_data
 
 
+def mount_retry_logic_to_session(sess):
+    retries = Retry(
+        total = 5,
+        backoff_factor = 1,
+        status_forcelist = [429, 500, 502, 503, 504]
+    )
+
+    retry_adapter = HTTPAdapter(max_retries=retries)
+    sess.mount('http://', retry_adapter)
+    sess.mount('https://', retry_adapter)
+
+
 def downloader(file_name, link, response, extension):
     file_size = int(response.headers.get("content-length", 0))
     username, _ , content_type = extract_video_id(link)
@@ -133,9 +147,11 @@ def download_v3(link):
 
     _, file_name, content_type = extract_video_id(link)
 
-    with requests.Session() as s:
+    with requests.Session() as sess:
+        mount_retry_logic_to_session(sess)
+
         try:
-            r = s.get("https://tiktokio.com/", headers=headers)
+            r = sess.get("https://tiktokio.com/", headers=headers)
 
             selector = Selector(text=r.text)
 
@@ -154,14 +170,14 @@ def download_v3(link):
                 download_link_index = 2 if args.watermark else 0
                 download_link = selector.css('div.tk-down-link a::attr(href)').getall()[download_link_index]
 
-                response = s.get(download_link, stream=True, headers=headers)
+                response = sess.get(download_link, stream=True, headers=headers)
 
                 downloader(file_name, link, response, extension="mp4")
             else:
                 download_links = selector.xpath('//div[@class="media-box"]/img/@src').getall()
 
                 for index, download_link in enumerate(download_links):
-                    response = s.get(download_link, stream=True, headers=headers)
+                    response = sess.get(download_link, stream=True, headers=headers)
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
 
         except Exception as e:
@@ -182,9 +198,11 @@ def download_v2(link):
 
     _, file_name, content_type = extract_video_id(link)
 
-    with requests.Session() as s:
+    with requests.Session() as sess:
+        mount_retry_logic_to_session(sess)
+
         try:
-            r = s.get("https://musicaldown.com/en", headers=headers)
+            r = sess.get("https://musicaldown.com/en", headers=headers)
 
             selector = Selector(text=r.text)
 
@@ -198,7 +216,7 @@ def download_v2(link):
                 'verify': '1',
             }
 
-            response = s.post('https://musicaldown.com/download', headers=headers, data=data)
+            response = sess.post('https://musicaldown.com/download', headers=headers, data=data)
 
             selector = Selector(text=response.text)
 
@@ -208,14 +226,14 @@ def download_v2(link):
 
                 download_link = watermark if args.watermark else no_watermark
 
-                response = s.get(download_link, stream=True, headers=headers)
+                response = sess.get(download_link, stream=True, headers=headers)
 
                 downloader(file_name, link, response, extension="mp4")
             else:
                 download_links = selector.xpath('//div[@class="card-image"]/img/@src').getall()
 
                 for index, download_link in enumerate(download_links):
-                    response = s.get(download_link, stream=True, headers=headers)
+                    response = sess.get(download_link, stream=True, headers=headers)
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
 
         except Exception as e:
@@ -236,15 +254,17 @@ def download_v1(link):
 
     _, file_name, content_type = extract_video_id(link)
 
-    with requests.Session() as s:
+    with requests.Session() as sess:
+        mount_retry_logic_to_session(sess)
+
         try:
-            response = s.get("https://tmate.cc/", headers=headers)
+            response = sess.get("https://tmate.cc/", headers=headers)
 
             selector = Selector(response.text)
             token = selector.css('input[name="token"]::attr(value)').get()
             data = {'url': link, 'token': token}
 
-            response = s.post('https://tmate.cc/action', headers=headers, data=data).json()["data"]
+            response = sess.post('https://tmate.cc/action', headers=headers, data=data).json()["data"]
 
             selector = Selector(text=response)
 
@@ -252,13 +272,13 @@ def download_v1(link):
                 download_link_index = 2 if args.watermark else 0
                 download_link = selector.css('.downtmate-right.is-desktop-only.right a::attr(href)').getall()[download_link_index]
 
-                response = s.get(download_link, stream=True, headers=headers)
+                response = sess.get(download_link, stream=True, headers=headers)
 
                 downloader(file_name, link, response, extension="mp4")
             else:
                 download_links = selector.css('.card-img-top::attr(src)').getall()
                 for index, download_link in enumerate(download_links):
-                    response = s.get(download_link, stream=True, headers=headers)
+                    response = sess.get(download_link, stream=True, headers=headers)
 
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
 
