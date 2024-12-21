@@ -22,7 +22,7 @@ parser.add_argument("--output-dir", default=".", help="Specify the output direct
 args = parser.parse_args()
 
 headers = {
-'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
 }
 
 def extract_video_id(url):
@@ -48,8 +48,6 @@ def extract_metadata(url):
     html = Selector(response.text)
     account_data = json.loads(html.xpath('//*[@id="__UNIVERSAL_DATA_FOR_REHYDRATION__"]/text()').get())
     data = account_data["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
-
-    #print(data)
 
     expression = """
     {
@@ -117,21 +115,21 @@ def downloader(file_name, link, response, extension):
         with open(metadata_file_path, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, indent=4, ensure_ascii=False)
 
+
 def download_v3(link):
     headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0',
-    'Accept': '*/*',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'HX-Request': 'true',
-    'HX-Trigger': 'search-btn',
-    'HX-Target': 'tiktok-parse-result',
-    'HX-Current-URL': 'https://tiktokio.com/',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Origin': 'https://tiktokio.com',
-    'Connection': 'keep-alive',
-    'Referer': 'https://tiktokio.com/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'HX-Request': 'true',
+        'HX-Trigger': 'search-btn',
+        'HX-Target': 'tiktok-parse-result',
+        'HX-Current-URL': 'https://tiktokio.com/',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://tiktokio.com',
+        'Connection': 'keep-alive',
+        'Referer': 'https://tiktokio.com/'
     }
-
 
     _, file_name, content_type = extract_video_id(link)
 
@@ -171,16 +169,16 @@ def download_v3(link):
             with open("errors.txt", 'a') as error_file:
                 error_file.write(link + "\n")
 
+
 def download_v2(link):
     headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
-    'Sec-Fetch-Site': 'same-origin',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Origin': 'https://musicaldown.com',
-    'Connection': 'keep-alive',
-    'Referer': 'https://musicaldown.com/en?ref=more',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
+        'Sec-Fetch-Site': 'same-origin',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://musicaldown.com',
+        'Connection': 'keep-alive',
+        'Referer': 'https://musicaldown.com/en?ref=more',
     }
-
 
     _, file_name, content_type = extract_video_id(link)
 
@@ -228,12 +226,12 @@ def download_v2(link):
 
 def download_v1(link):
     headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.4',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Origin': 'https://tmate.cc',
-    'Connection': 'keep-alive',
-    'Referer': 'https://tmate.cc/',
-    'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.4',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://tmate.cc',
+        'Connection': 'keep-alive',
+        'Referer': 'https://tmate.cc/',
+        'Sec-Fetch-Site': 'same-origin',
     }
 
     _, file_name, content_type = extract_video_id(link)
@@ -283,5 +281,9 @@ if __name__ == "__main__":
     download_function = download_functions.get(args.api_version)
 
     if download_function:
+        # Write new line to signify new session starting
+        with open("errors.txt", 'a') as error_file:
+            error_file.write("\n")
+
         with futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
             executor.map(download_function, tiktok_links)
