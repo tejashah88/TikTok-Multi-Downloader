@@ -289,7 +289,7 @@ def download_v1(link):
 
 
 if __name__ == "__main__":
-    with open(args.links, "r") as links:
+    with open(args.links, 'r', encoding='utf-8') as links:
         tiktok_links = links.read().strip().split("\n")
 
     download_functions = {
