@@ -1,5 +1,6 @@
 import requests
 from requests.adapters import HTTPAdapter
+from requests_cache import CachedSession, NEVER_EXPIRE
 from urllib3.util import Retry
 from parsel import Selector
 import argparse
@@ -147,7 +148,12 @@ def download_v3(link):
 
     _, file_name, content_type = extract_video_id(link)
 
-    with requests.Session() as sess:
+    with CachedSession(
+        expire_after=NEVER_EXPIRE,
+        allowable_codes=[200],
+        stale_if_error=True,
+        backend='sqlite',
+    ) as sess:
         mount_retry_logic_to_session(sess)
 
         try:
@@ -198,7 +204,12 @@ def download_v2(link):
 
     _, file_name, content_type = extract_video_id(link)
 
-    with requests.Session() as sess:
+    with CachedSession(
+        expire_after=NEVER_EXPIRE,
+        allowable_codes=[200],
+        stale_if_error=True,
+        backend='sqlite',
+    ) as sess:
         mount_retry_logic_to_session(sess)
 
         try:
@@ -254,7 +265,12 @@ def download_v1(link):
 
     _, file_name, content_type = extract_video_id(link)
 
-    with requests.Session() as sess:
+    with CachedSession(
+        expire_after=NEVER_EXPIRE,
+        allowable_codes=[200],
+        stale_if_error=True,
+        backend='sqlite',
+    ) as sess:
         mount_retry_logic_to_session(sess)
 
         try:
