@@ -10,6 +10,7 @@ from concurrent import futures
 import re
 import json
 import jmespath
+import traceback
 
 parser = argparse.ArgumentParser(description="Multitok: A simple script that downloads TikTok videos concurrently.")
 watermark_group = parser.add_mutually_exclusive_group()
@@ -317,6 +318,8 @@ if __name__ == '__main__':
     if download_function:
         url_cache = UrlCache('url_cache.db')
 
+        # Create a processing function that wraps the downloader
+        # function with exception handling and cache management
         def process_tt_link(link):
             if not url_cache.contains(link):
                 success, exception = download_function(link)
@@ -324,13 +327,11 @@ if __name__ == '__main__':
                 if success:
                     url_cache.save(link)
                 else:
-                    print(f"\033[91merror\033[0m: {link} - {str(exception)}")
-                    with open("errors.txt", 'a') as error_file:
-                        error_file.write(link + "\n")
+                    print(f"\033[91mError\033[0m: {link} - {str(exception)}")
+                    traceback.print_exception(type(exception), exception, exception.__traceback__)
 
-        # Write new line to signify new session starting
-        with open('errors.txt', 'a') as error_file:
-            error_file.write('\n')
+                    with open("errors.txt", 'a') as error_file:
+                        error_file.write(f'{link} - {str(exception)}\n')
 
         with futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
             executor.map(process_tt_link, tiktok_links)
