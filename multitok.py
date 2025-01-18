@@ -1,3 +1,4 @@
+from sqlitedict import SqliteDict
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
@@ -23,13 +24,29 @@ parser.add_argument("--no-folders", action="store_true", help="Download all vide
 parser.add_argument("--output-dir", default=".", help="Specify the output directory for downloads. (Default: current directory)")
 args = parser.parse_args()
 
-headers = {
+DEFAULT_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
 }
 
+
+class UrlCache:
+    def __init__(self, db_name):
+        # Initialize database with auto-commiting and more efficiency
+        self.db = SqliteDict(db_name, autocommit=True, outer_stack=False)
+
+    def save(self, url):
+        self.db[url] = True
+
+    def contains(self, url):
+        return url in self.db
+
+    def close(self):
+        self.db.close()
+
+
 def extract_video_id(url):
     if 'vm.tiktok.com' in url:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=DEFAULT_HEADERS)
         url = response.url
 
     username_pattern = r"@([A-Za-z0-9_.]+)"
@@ -46,7 +63,7 @@ def extract_video_id(url):
 
 
 def extract_metadata(url):
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=DEFAULT_HEADERS)
     html = Selector(response.text)
     account_data = json.loads(html.xpath('//*[@id="__UNIVERSAL_DATA_FOR_REHYDRATION__"]/text()').get())
     data = account_data["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
@@ -179,11 +196,10 @@ def download_v3(link):
                 for index, download_link in enumerate(download_links):
                     response = sess.get(download_link, stream=True, headers=headers)
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
+        except Exception as ex:
+            return False, ex
 
-        except Exception as e:
-            print(f"\033[91merror\033[0m: {link} - {str(e)}")
-            with open("errors.txt", 'a') as error_file:
-                error_file.write(link + "\n")
+    return True, None
 
 
 def download_v2(link):
@@ -235,11 +251,10 @@ def download_v2(link):
                 for index, download_link in enumerate(download_links):
                     response = sess.get(download_link, stream=True, headers=headers)
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
+        except Exception as ex:
+            return False, ex
 
-        except Exception as e:
-            print(f"\033[91merror\033[0m: {link} - {str(e)}")
-            with open("errors.txt", 'a') as error_file:
-                error_file.write(link + "\n")
+    return True, None
 
 
 def download_v1(link):
@@ -281,16 +296,15 @@ def download_v1(link):
                     response = sess.get(download_link, stream=True, headers=headers)
 
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
+        except Exception as ex:
+            return False, ex
 
-        except Exception:
-            print(f"\033[91merror\033[0m: {link}")
-            with open("errors.txt", 'a') as error_file:
-                error_file.write(link + "\n")
+    return True, None
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     with open(args.links, 'r', encoding='utf-8') as links:
-        tiktok_links = links.read().strip().split("\n")
+        tiktok_links = links.read().strip().split('\n')
 
     download_functions = {
         'v1': download_v1,
@@ -301,9 +315,22 @@ if __name__ == "__main__":
     download_function = download_functions.get(args.api_version)
 
     if download_function:
+        url_cache = UrlCache('url_cache.db')
+
+        def process_tt_link(link):
+            if not url_cache.contains(link):
+                success, exception = download_function(link)
+
+                if success:
+                    url_cache.save(link)
+                else:
+                    print(f"\033[91merror\033[0m: {link} - {str(exception)}")
+                    with open("errors.txt", 'a') as error_file:
+                        error_file.write(link + "\n")
+
         # Write new line to signify new session starting
-        with open("errors.txt", 'a') as error_file:
-            error_file.write("\n")
+        with open('errors.txt', 'a') as error_file:
+            error_file.write('\n')
 
         with futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
-            executor.map(download_function, tiktok_links)
+            executor.map(process_tt_link, tiktok_links)
