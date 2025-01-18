@@ -1,4 +1,3 @@
 parsel
 requests
 tqdm
-requests-cache
