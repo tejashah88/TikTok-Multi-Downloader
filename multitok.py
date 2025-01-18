@@ -72,7 +72,7 @@ def extract_metadata(url):
 
 def mount_retry_logic_to_session(sess):
     retries = Retry(
-        total = 5,
+        total = 10,
         backoff_factor = 1,
         status_forcelist = [429, 500, 502, 503, 504]
     )
