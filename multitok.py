@@ -186,7 +186,12 @@ def download_v3(link):
 
             if content_type == "video":
                 download_link_index = 2 if args.watermark else 0
-                download_link = selector.css('div.tk-down-link a::attr(href)').getall()[download_link_index]
+                all_download_links = selector.css('div.tk-down-link a::attr(href)').getall()
+
+                if len(all_download_links) == 0:
+                    raise Exception('Post is either private or removed.')
+
+                download_link = all_download_links[download_link_index]
 
                 response = sess.get(download_link, stream=True, headers=headers)
 
@@ -241,6 +246,9 @@ def download_v2(link):
                 watermark = selector.xpath('/html/body/div[2]/div/div[2]/div[2]/a[3]/@href').get()
                 no_watermark = selector.xpath('/html/body/div[2]/div/div[2]/div[2]/a[1]/@href').get()
 
+                if watermark is None and no_watermark is None:
+                    raise Exception('Post is either private or removed.')
+
                 download_link = watermark if args.watermark else no_watermark
 
                 response = sess.get(download_link, stream=True, headers=headers)
@@ -280,9 +288,11 @@ def download_v1(link):
             token = selector.css('input[name="token"]::attr(value)').get()
             data = {'url': link, 'token': token}
 
-            response = sess.post('https://tmate.cc/action', headers=headers, data=data).json()["data"]
+            response = sess.post('https://tmate.cc/action', headers=headers, data=data).json()
+            if response['error']:
+                raise Exception('Post is either private or removed.')
 
-            selector = Selector(text=response)
+            selector = Selector(text=response['data'])
 
             if content_type == "video":
                 download_link_index = 2 if args.watermark else 0
