@@ -1,16 +1,19 @@
-from sqlitedict import SqliteDict
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util import Retry
-from parsel import Selector
-import argparse
-import os
-from tqdm import tqdm
+# Native imports
 from concurrent import futures
-import re
+from urllib3.util import Retry
+import argparse
 import json
-import jmespath
+import os
+import re
 import traceback
+
+# 3rd-Party imports
+from parsel import Selector
+from requests.adapters import HTTPAdapter
+from sqlitedict import SqliteDict
+from tqdm import tqdm
+import jmespath
+import requests
 
 parser = argparse.ArgumentParser(description="Multitok: A simple script that downloads TikTok videos concurrently.")
 watermark_group = parser.add_mutually_exclusive_group()
