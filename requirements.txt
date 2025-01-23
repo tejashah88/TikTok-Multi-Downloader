@@ -1,4 +1,5 @@
+fake-useragent
 parsel
 requests
-tqdm
 sqlitedict
+tqdm

@@ -8,6 +8,7 @@ import re
 import traceback
 
 # 3rd-Party imports
+from fake_useragent import UserAgent
 from parsel import Selector
 from requests.adapters import HTTPAdapter
 from sqlitedict import SqliteDict
@@ -28,9 +29,11 @@ parser.add_argument("--no-folders", action="store_true", help="Download all vide
 parser.add_argument("--output-dir", default=".", help="Specify the output directory for downloads. (Default: current directory)")
 args = parser.parse_args()
 
-DEFAULT_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-}
+
+user_agent_gen = UserAgent(
+    os=["Windows", "Chrome OS", "Mac OS X", "Android", "iOS"],
+    platforms=["desktop", "mobile", "tablet"],
+)
 
 
 class UrlCache:
@@ -50,7 +53,7 @@ class UrlCache:
 
 def extract_video_id(url):
     if 'vm.tiktok.com' in url:
-        response = requests.get(url, headers=DEFAULT_HEADERS)
+        response = requests.get(url, headers=user_agent_gen.random)
         url = response.url
 
     username_pattern = r"@([A-Za-z0-9_.]+)"
@@ -67,7 +70,7 @@ def extract_video_id(url):
 
 
 def extract_metadata(url):
-    response = requests.get(url, headers=DEFAULT_HEADERS)
+    response = requests.get(url, headers=user_agent_gen.random)
     html = Selector(response.text)
     account_data = json.loads(html.xpath('//*[@id="__UNIVERSAL_DATA_FOR_REHYDRATION__"]/text()').get())
     data = account_data["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
@@ -145,25 +148,25 @@ def downloader(file_name, link, response, extension):
             os.makedirs(metadata_path)
 
         metadata = extract_metadata(link)
-
         metadata_file_path = os.path.join(metadata_path, f"{file_name}.json")
+
         with open(metadata_file_path, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, indent=4, ensure_ascii=False)
 
 
 def download_v3(link):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0',
-        'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.5',
-        'HX-Request': 'true',
-        'HX-Trigger': 'search-btn',
-        'HX-Target': 'tiktok-parse-result',
-        'HX-Current-URL': 'https://tiktokio.com/',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Origin': 'https://tiktokio.com',
+        'Accept': '*/*',
         'Connection': 'keep-alive',
-        'Referer': 'https://tiktokio.com/'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'HX-Current-URL': 'https://tiktokio.com/',
+        'HX-Request': 'true',
+        'HX-Target': 'tiktok-parse-result',
+        'HX-Trigger': 'search-btn',
+        'Origin': 'https://tiktokio.com',
+        'Referer': 'https://tiktokio.com/',
+        'User-Agent': user_agent_gen.random,
     }
 
     _, file_name, content_type = extract_video_id(link)
@@ -173,9 +176,7 @@ def download_v3(link):
 
         try:
             r = sess.get("https://tiktokio.com/", headers=headers)
-
             selector = Selector(text=r.text)
-
             prefix = selector.css('input[name="prefix"]::attr(value)').get()
 
             data = {
@@ -184,7 +185,6 @@ def download_v3(link):
             }
 
             response = requests.post('https://tiktokio.com/api/v1/tk-htmx', headers=headers, data=data)
-
             selector = Selector(text=response.text)
 
             if content_type == "video":
@@ -195,9 +195,7 @@ def download_v3(link):
                     raise Exception('Post is either private or removed.')
 
                 download_link = all_download_links[download_link_index]
-
                 response = sess.get(download_link, stream=True, headers=headers)
-
                 downloader(file_name, link, response, extension="mp4")
             else:
                 download_links = selector.xpath('//div[@class="media-box"]/img/@src').getall()
@@ -213,12 +211,12 @@ def download_v3(link):
 
 def download_v2(link):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
-        'Sec-Fetch-Site': 'same-origin',
+        'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
         'Origin': 'https://musicaldown.com',
-        'Connection': 'keep-alive',
         'Referer': 'https://musicaldown.com/en?ref=more',
+        'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': user_agent_gen.random,
     }
 
     _, file_name, content_type = extract_video_id(link)
@@ -228,7 +226,6 @@ def download_v2(link):
 
         try:
             r = sess.get("https://musicaldown.com/en", headers=headers)
-
             selector = Selector(text=r.text)
 
             token_a = selector.xpath('//*[@id="link_url"]/@name').get()
@@ -242,7 +239,6 @@ def download_v2(link):
             }
 
             response = sess.post('https://musicaldown.com/download', headers=headers, data=data)
-
             selector = Selector(text=response.text)
 
             if content_type == "video":
@@ -253,9 +249,7 @@ def download_v2(link):
                     raise Exception('Post is either private or removed.')
 
                 download_link = watermark if args.watermark else no_watermark
-
                 response = sess.get(download_link, stream=True, headers=headers)
-
                 downloader(file_name, link, response, extension="mp4")
             else:
                 download_links = selector.xpath('//div[@class="card-image"]/img/@src').getall()
@@ -271,12 +265,12 @@ def download_v2(link):
 
 def download_v1(link):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.4',
+        'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
         'Origin': 'https://tmate.cc',
-        'Connection': 'keep-alive',
         'Referer': 'https://tmate.cc/',
         'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': user_agent_gen.random,
     }
 
     _, file_name, content_type = extract_video_id(link)
@@ -302,13 +296,11 @@ def download_v1(link):
                 download_link = selector.css('.downtmate-right.is-desktop-only.right a::attr(href)').getall()[download_link_index]
 
                 response = sess.get(download_link, stream=True, headers=headers)
-
                 downloader(file_name, link, response, extension="mp4")
             else:
                 download_links = selector.css('.card-img-top::attr(src)').getall()
                 for index, download_link in enumerate(download_links):
                     response = sess.get(download_link, stream=True, headers=headers)
-
                     downloader(f"{file_name}_{index}", link, response, extension="jpeg")
         except Exception as ex:
             return False, ex
