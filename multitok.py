@@ -30,9 +30,14 @@ parser.add_argument("--output-dir", default=".", help="Specify the output direct
 args = parser.parse_args()
 
 
-user_agent_gen = UserAgent(
-    os=["Windows", "Chrome OS", "Mac OS X", "Android", "iOS"],
-    platforms=["desktop", "mobile", "tablet"],
+tt_user_agent_gen = UserAgent(
+    os=["Windows"],
+    platforms=["desktop"],
+)
+
+content_user_agent_gen = UserAgent(
+    os=["Windows", "Chrome OS", "Mac OS X"],
+    platforms=["desktop"],
 )
 
 
@@ -53,7 +58,7 @@ class UrlCache:
 
 def extract_video_id(url):
     if 'vm.tiktok.com' in url:
-        response = requests.get(url, headers=user_agent_gen.random)
+        response = requests.get(url, headers=tt_user_agent_gen.random)
         url = response.url
 
     username_pattern = r"@([A-Za-z0-9_.]+)"
@@ -70,7 +75,7 @@ def extract_video_id(url):
 
 
 def extract_metadata(url):
-    response = requests.get(url, headers=user_agent_gen.random)
+    response = requests.get(url, headers=tt_user_agent_gen.random)
     html = Selector(response.text)
     account_data = json.loads(html.xpath('//*[@id="__UNIVERSAL_DATA_FOR_REHYDRATION__"]/text()').get())
     data = account_data["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
@@ -166,7 +171,7 @@ def download_v3(link):
         'HX-Trigger': 'search-btn',
         'Origin': 'https://tiktokio.com',
         'Referer': 'https://tiktokio.com/',
-        'User-Agent': user_agent_gen.random,
+        'User-Agent': content_user_agent_gen.random,
     }
 
     _, file_name, content_type = extract_video_id(link)
@@ -216,7 +221,7 @@ def download_v2(link):
         'Origin': 'https://musicaldown.com',
         'Referer': 'https://musicaldown.com/en?ref=more',
         'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': user_agent_gen.random,
+        'User-Agent': content_user_agent_gen.random,
     }
 
     _, file_name, content_type = extract_video_id(link)
@@ -270,7 +275,7 @@ def download_v1(link):
         'Origin': 'https://tmate.cc',
         'Referer': 'https://tmate.cc/',
         'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': user_agent_gen.random,
+        'User-Agent': content_user_agent_gen.random,
     }
 
     _, file_name, content_type = extract_video_id(link)
