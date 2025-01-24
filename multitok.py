@@ -58,7 +58,7 @@ class UrlCache:
 
 def extract_video_id(url):
     if 'vm.tiktok.com' in url:
-        response = requests.get(url, headers=tt_user_agent_gen.random)
+        response = requests.get(url, headers={'User-Agent': tt_user_agent_gen.random})
         url = response.url
 
     username_pattern = r"@([A-Za-z0-9_.]+)"
@@ -75,7 +75,7 @@ def extract_video_id(url):
 
 
 def extract_metadata(url):
-    response = requests.get(url, headers=tt_user_agent_gen.random)
+    response = requests.get(url, headers={'User-Agent': tt_user_agent_gen.random})
     html = Selector(response.text)
     account_data = json.loads(html.xpath('//*[@id="__UNIVERSAL_DATA_FOR_REHYDRATION__"]/text()').get())
     data = account_data["__DEFAULT_SCOPE__"]["webapp.video-detail"]["itemInfo"]["itemStruct"]
