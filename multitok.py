@@ -57,15 +57,21 @@ class UrlCache:
 
 
 def extract_video_id(url):
-    if 'vm.tiktok.com' in url:
+    if 'vm.tiktok.com' in url or 'tiktokv.com' in url:
         response = requests.get(url, headers={'User-Agent': tt_user_agent_gen.random})
         url = response.url
 
-    username_pattern = r"@([A-Za-z0-9_.]+)"
+    username_pattern = r"@([A-Za-z0-9_.]+)?"
     content_type_pattern = r"/(video|photo)/(\d+)"
 
     username_match = re.search(username_pattern, url)
     username = username_match.group(0)
+
+    # If the username is not resolved, add a generic name placeholder
+    # Useful if trying to work with URLs that don't resolve the username due to
+    # dynamic javascript shenanigans (i.e. when 301 resolving doesn't work)
+    if username == '@':
+        username += '[tiktok-user]'
 
     content_type_match = re.search(content_type_pattern, url)
     content_type = content_type_match.group(1)
@@ -159,7 +165,7 @@ def downloader(file_name, link, response, extension):
             json.dump(metadata, f, indent=4, ensure_ascii=False)
 
 
-def download_v3(link):
+def download_v3(link: str) -> tuple[bool, Exception | None]:
     headers = {
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept': '*/*',
@@ -214,7 +220,7 @@ def download_v3(link):
     return True, None
 
 
-def download_v2(link):
+def download_v2(link: str) -> tuple[bool, Exception | None]:
     headers = {
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -268,7 +274,7 @@ def download_v2(link):
     return True, None
 
 
-def download_v1(link):
+def download_v1(link: str) -> tuple[bool, Exception | None]:
     headers = {
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
